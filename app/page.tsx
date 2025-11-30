@@ -2,240 +2,208 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Truck, User, Users, Wrench, Fuel, Calendar, TrendingUp, AlertTriangle, CheckCircle, DollarSign } from 'lucide-react';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend } from 'recharts';
+import { Truck, Users, Fuel, AlertTriangle, Wallet, TrendingUp, Calendar, DollarSign } from 'lucide-react';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
-// --- GROUND TRUTH DATA & SIMULATION ---
-
-// 1. FLEET DATA (9 Units)
-const fleet = [
-  { id: 'TRK-001', type: 'XCMG Dump', status: 'Active', driver: 'Mamadou B.', fuel_avg: 54.2, target: 55 },
-  { id: 'TRK-002', type: 'XCMG Dump', status: 'Active', driver: 'Ibrahima S.', fuel_avg: 56.1, target: 55 },
-  { id: 'TRK-003', type: 'XCMG Dump', status: 'Maintenance', driver: 'Unassigned', fuel_avg: 0, target: 55 },
-  { id: 'TRK-004', type: 'XCMG Dump', status: 'Active', driver: 'Alpha O.', fuel_avg: 53.8, target: 55 },
-  { id: 'TRK-005', type: 'XCMG Dump', status: 'Active', driver: 'Ousmane D.', fuel_avg: 55.0, target: 55 },
-  { id: 'TRK-006', type: 'XCMG Dump', status: 'Active', driver: 'Sekou T.', fuel_avg: 54.5, target: 55 },
-  { id: 'TRK-007', type: 'Sinotruk', status: 'Active', driver: 'Moussa C.', fuel_avg: 58.2, target: 55 }, // Less efficient
-  { id: 'TRK-008', type: 'Sinotruk', status: 'Tire Issue', driver: 'Abdoulaye K.', fuel_avg: 0, target: 55 },
-  { id: 'TNK-001', type: 'Tanker', status: 'Active', driver: 'Fode S.', fuel_avg: 48.0, target: 50 },
+// --- 1. FINANCIAL DATA (Source: ETAT PROVISOIRE) ---
+const financialKPIs = [
+  { title: 'Total Revenue', value: '7.17B GNF', trend: '+100%', color: 'text-green-600', border: 'border-green-500' },
+  { title: 'Net Profit', value: '2.50B GNF', trend: '34.8% Margin', color: 'text-blue-600', border: 'border-blue-500' },
+  { title: 'Operating Costs', value: '3.28B GNF', trend: '45% Ratio', color: 'text-red-600', border: 'border-red-500' },
+  { title: 'Cash on Hand', value: '97.08M GNF', trend: '⚠ Low Liquidity', color: 'text-amber-600', border: 'border-amber-500' },
 ];
 
-// 2. WORKFORCE DATA (16 Drivers + Staff)
-const workforce = [
-  { role: 'Drivers (Heavy)', count: 16, status: '14 Active / 2 Rest', cost: '4.3M GNF/mo avg' },
-  { role: 'Mechanics', count: 3, status: 'Active', cost: 'Fixed Salary' },
-  { role: 'Admin/Ops', count: 4, status: 'Active', cost: 'Fixed Salary' },
+// --- 2. OPERATIONAL DATA (Source: User Input + Fleet Logs) ---
+const fleetData = [
+  { id: 'TRK-01', type: 'XCMG', driver: 'Mamadou B.', status: 'Active', fuel: 54, target: 55 },
+  { id: 'TRK-02', type: 'XCMG', driver: 'Ibrahima S.', status: 'Active', fuel: 55, target: 55 },
+  { id: 'TRK-03', type: 'XCMG', driver: 'Alpha O.', status: 'Maintenance', fuel: 0, target: 55 },
+  { id: 'TRK-04', type: 'XCMG', driver: 'Ousmane D.', status: 'Active', fuel: 56, target: 55 },
+  { id: 'TRK-05', type: 'XCMG', driver: 'Sekou T.', status: 'Active', fuel: 53, target: 55 },
+  { id: 'TRK-06', type: 'XCMG', driver: 'Fode K.', status: 'Active', fuel: 55, target: 55 },
+  { id: 'TRK-07', type: 'Sinotruk', driver: 'Moussa C.', status: 'Active', fuel: 58, target: 55 },
+  { id: 'TRK-08', type: 'Sinotruk', driver: 'Abdoulaye K.', status: 'Grounded', fuel: 0, target: 55 },
+  { id: 'TNK-01', type: 'Tanker', driver: 'Salifou D.', status: 'Active', fuel: 48, target: 50 },
 ];
 
-// 3. REVENUE DATA (Simulated based on 7.17B Total)
-// Monthly (Feb - Nov)
-const monthlyRevenue = [
-  { name: 'Feb', value: 450000000 },
-  { name: 'Mar', value: 680000000 },
-  { name: 'Apr', value: 720000000 },
-  { name: 'May', value: 810000000 },
-  { name: 'Jun', value: 790000000 },
-  { name: 'Jul', value: 850000000 },
-  { name: 'Aug', value: 620000000 }, // Rain impact
-  { name: 'Sep', value: 750000000 },
-  { name: 'Oct', value: 910000000 },
-  { name: 'Nov', value: 590000000 }, // Current partial
+const workersData = [
+  { role: 'Drivers', count: 16, cost: '69M GNF/mo' },
+  { role: 'Mechanics', count: 3, cost: 'Fixed' },
+  { role: 'Admin/Ops', count: 4, cost: 'Fixed' },
 ];
 
-// Weekly (Last 4 Weeks)
-const weeklyRevenue = [
-  { name: 'Wk 42', value: 185000000 },
-  { name: 'Wk 43', value: 192000000 },
-  { name: 'Wk 44', value: 210000000 },
-  { name: 'Wk 45', value: 178000000 },
+// --- 3. REVENUE TRENDS (Simulated Breakdown of 7.17B Total) ---
+const monthlyData = [
+  { name: 'Feb', income: 450 }, { name: 'Mar', income: 680 }, { name: 'Apr', income: 720 },
+  { name: 'May', income: 810 }, { name: 'Jun', income: 790 }, { name: 'Jul', income: 850 },
+  { name: 'Aug', income: 620 }, { name: 'Sep', income: 750 }, { name: 'Oct', income: 910 },
+  { name: 'Nov', income: 590 },
+]; // Values in Million GNF
+
+const weeklyData = [
+  { name: 'Wk 1', income: 185 }, { name: 'Wk 2', income: 192 },
+  { name: 'Wk 3', income: 210 }, { name: 'Wk 4', income: 178 },
 ];
 
-// Daily (Last 7 Days)
-const dailyRevenue = [
-  { name: 'Mon', value: 28000000 },
-  { name: 'Tue', value: 32000000 },
-  { name: 'Wed', value: 29500000 },
-  { name: 'Thu', value: 35000000 },
-  { name: 'Fri', value: 31000000 },
-  { name: 'Sat', value: 18000000 },
-  { name: 'Sun', value: 0 }, // Rest day
+const dailyData = [
+  { name: 'Mon', income: 28 }, { name: 'Tue', income: 32 }, { name: 'Wed', income: 29 },
+  { name: 'Thu', income: 35 }, { name: 'Fri', income: 31 }, { name: 'Sat', income: 18 },
+  { name: 'Sun', income: 0 },
 ];
 
-const formatGNF = (val: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'GNF', notation: 'compact' }).format(val);
+const formatMoney = (val: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'GNF', notation: 'compact' }).format(val * 1000000);
 
-export default function ProlinkinDashboardV3() {
+
+export default function ProlinkinDashboard() {
   return (
     <div className="min-h-screen bg-slate-50 p-6 font-sans text-slate-900">
-      <header className="mb-8 flex justify-between items-center">
+      {/* HEADER */}
+      <div className="mb-8 flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-[#004e92]">PROLINKON GUINEE</h1>
-          <p className="text-slate-600">Operations Command Center v3.0</p>
+          <p className="text-slate-600">Operational Command Center</p>
         </div>
-        <div className="flex gap-3">
-           <div className="px-4 py-2 bg-white border border-slate-200 rounded-md text-sm font-medium shadow-sm flex items-center gap-2">
-              <Truck className="w-4 h-4 text-slate-500" /> 9 Units
-           </div>
-           <div className="px-4 py-2 bg-white border border-slate-200 rounded-md text-sm font-medium shadow-sm flex items-center gap-2">
-              <Users className="w-4 h-4 text-slate-500" /> 23 Staff
-           </div>
+        <div className="px-4 py-2 bg-white border rounded shadow-sm flex gap-4">
+           <div className="flex items-center gap-2"><Truck className="w-4 h-4 text-blue-600"/> <span className="font-bold">9 Trucks</span></div>
+           <div className="flex items-center gap-2"><Users className="w-4 h-4 text-blue-600"/> <span className="font-bold">16 Drivers</span></div>
         </div>
-      </header>
+      </div>
 
-      <Tabs defaultValue="operations" className="space-y-6">
-        <TabsList className="bg-white p-1 rounded-lg border shadow-sm">
-          <TabsTrigger value="financials" className="px-6 py-2">💰 Financial Overview</TabsTrigger>
-          <TabsTrigger value="operations" className="px-6 py-2">🚚 Ops & Fleet (New)</TabsTrigger>
-          <TabsTrigger value="revenue" className="px-6 py-2">📈 Detailed Income (New)</TabsTrigger>
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList className="bg-white border p-1 rounded-lg shadow-sm">
+          <TabsTrigger value="overview" className="px-6 py-2">📊 CFO Overview</TabsTrigger>
+          <TabsTrigger value="operations" className="px-6 py-2">🚚 Ops & Fleet</TabsTrigger>
+          <TabsTrigger value="revenue" className="px-6 py-2">📈 Revenue Detail</TabsTrigger>
         </TabsList>
 
-        {/* --- 1. FINANCIALS (Summary) --- */}
-        <TabsContent value="financials">
-           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <Card className="border-t-4 border-green-500">
-              <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-500">Total Revenue</CardTitle></CardHeader>
-              <CardContent><div className="text-2xl font-bold">7.17B GNF</div></CardContent>
-            </Card>
-            <Card className="border-t-4 border-blue-500">
-              <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-500">Net Profit</CardTitle></CardHeader>
-              <CardContent><div className="text-2xl font-bold">2.50B GNF</div></CardContent>
-            </Card>
-            <Card className="border-t-4 border-red-500">
-               <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-500">Burn Rate (Fuel/Salaries)</CardTitle></CardHeader>
-               <CardContent><div className="text-2xl font-bold">~320M GNF/mo</div></CardContent>
-            </Card>
-           </div>
-        </TabsContent>
-
-        {/* --- 2. OPERATIONS (Fleet & Workers) --- */}
-        <TabsContent value="operations" className="space-y-6">
-           {/* Fleet Status Table */}
-           <Card>
-             <CardHeader><CardTitle className="flex items-center gap-2"><Truck className="w-5 h-5" /> Fleet Status</CardTitle></CardHeader>
-             <CardContent>
-               <div className="overflow-x-auto">
-                 <table className="w-full text-sm text-left">
-                   <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b">
-                     <tr>
-                       <th className="px-4 py-3">Unit ID</th>
-                       <th className="px-4 py-3">Type</th>
-                       <th className="px-4 py-3">Status</th>
-                       <th className="px-4 py-3">Assigned Driver</th>
-                       <th className="px-4 py-3">Fuel Avg</th>
-                       <th className="px-4 py-3">Efficiency</th>
-                     </tr>
-                   </thead>
-                   <tbody>
-                     {fleet.map((truck) => (
-                       <tr key={truck.id} className="border-b hover:bg-slate-50">
-                         <td className="px-4 py-3 font-medium">{truck.id}</td>
-                         <td className="px-4 py-3">{truck.type}</td>
-                         <td className="px-4 py-3">
-                           <span className={`px-2 py-1 rounded-full text-xs font-bold ${truck.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                             {truck.status}
-                           </span>
-                         </td>
-                         <td className="px-4 py-3">{truck.driver}</td>
-                         <td className="px-4 py-3">{truck.fuel_avg} L/Trip</td>
-                         <td className="px-4 py-3">
-                            {truck.fuel_avg > 0 && truck.fuel_avg <= truck.target ? 
-                              <CheckCircle className="w-4 h-4 text-green-500" /> : 
-                              <AlertTriangle className="w-4 h-4 text-amber-500" />
-                            }
-                         </td>
-                       </tr>
-                     ))}
-                   </tbody>
-                 </table>
-               </div>
-             </CardContent>
-           </Card>
-
-           {/* Workforce Summary */}
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader><CardTitle className="flex items-center gap-2"><Users className="w-5 h-5" /> Workforce Allocation</CardTitle></CardHeader>
+        {/* --- TAB 1: CFO OVERVIEW --- */}
+        <TabsContent value="overview" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {financialKPIs.map((kpi) => (
+              <Card key={kpi.title} className={`border-l-4 ${kpi.border} shadow-sm`}>
+                <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-500">{kpi.title}</CardTitle></CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {workforce.map((group) => (
-                      <div key={group.role} className="flex justify-between items-center border-b pb-2 last:border-0">
-                        <div>
-                          <div className="font-medium">{group.role}</div>
-                          <div className="text-xs text-slate-500">{group.status}</div>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-bold">{group.count}</div>
-                          <div className="text-xs text-slate-500">{group.cost}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <div className="text-2xl font-bold">{kpi.value}</div>
+                  <div className={`text-xs font-bold ${kpi.color}`}>{kpi.trend}</div>
                 </CardContent>
               </Card>
-              <Card className="bg-blue-50 border-blue-200">
-                 <CardHeader><CardTitle className="text-blue-800">Operational Alerts</CardTitle></CardHeader>
-                 <CardContent className="space-y-3">
-                    <div className="flex gap-3 items-start">
-                       <AlertTriangle className="w-5 h-5 text-red-600 shrink-0" />
-                       <p className="text-sm text-blue-900"><strong>Tire Mismatch:</strong> TRK-008 is grounded. Missing 13R22.5 spare. Impact: -25M GNF/week.</p>
-                    </div>
-                    <div className="flex gap-3 items-start">
-                       <Fuel className="w-5 h-5 text-amber-600 shrink-0" />
-                       <p className="text-sm text-blue-900"><strong>Fuel Drift:</strong> TRK-007 (Sinotruk) averaging 58.2L (+3.2L over target). Driver coaching required.</p>
-                    </div>
-                 </CardContent>
-              </Card>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+             <Card>
+               <CardHeader><CardTitle>Expense Breakdown</CardTitle></CardHeader>
+               <CardContent>
+                 <div className="space-y-4">
+                    <div className="flex justify-between border-b pb-1"><span>Fuel & Consumables</span><span className="font-bold">1.15B GNF</span></div>
+                    <div className="flex justify-between border-b pb-1"><span>Personnel</span><span className="font-bold">551M GNF</span></div>
+                    <div className="flex justify-between border-b pb-1"><span>Maintenance/Services</span><span className="font-bold">386M GNF</span></div>
+                    <div className="flex justify-between border-b pb-1"><span>Depreciation</span><span className="font-bold">1.30B GNF</span></div>
+                 </div>
+               </CardContent>
+             </Card>
+             <Card className="bg-red-50 border-red-200">
+                <CardHeader><CardTitle className="text-red-800">Critical Alerts</CardTitle></CardHeader>
+                <CardContent className="space-y-3 text-sm text-red-700">
+                   <div className="flex gap-2"><AlertTriangle className="w-4 h-4"/> <span><strong>Liquidity:</strong> Cash (97M) covers only 3% of Supplier Debt.</span></div>
+                   <div className="flex gap-2"><AlertTriangle className="w-4 h-4"/> <span><strong>Tire Stock:</strong> Critical shortage of 13R22.5 spares.</span></div>
+                </CardContent>
+             </Card>
+          </div>
+        </TabsContent>
+
+        {/* --- TAB 2: OPERATIONS --- */}
+        <TabsContent value="operations" className="space-y-6">
+           <Card>
+             <CardHeader><CardTitle>Fleet & Driver Status</CardTitle></CardHeader>
+             <CardContent>
+               <table className="w-full text-sm text-left">
+                 <thead className="bg-slate-100 text-slate-600 uppercase text-xs">
+                   <tr>
+                     <th className="px-4 py-3">Unit</th>
+                     <th className="px-4 py-3">Type</th>
+                     <th className="px-4 py-3">Driver</th>
+                     <th className="px-4 py-3">Status</th>
+                     <th className="px-4 py-3">Fuel (L/Trip)</th>
+                   </tr>
+                 </thead>
+                 <tbody>
+                   {fleet.map((t) => (
+                     <tr key={t.id} className="border-b hover:bg-slate-50">
+                       <td className="px-4 py-3 font-bold">{t.id}</td>
+                       <td className="px-4 py-3">{t.type}</td>
+                       <td className="px-4 py-3">{t.driver}</td>
+                       <td className="px-4 py-3">
+                         <span className={`px-2 py-1 rounded text-xs font-bold ${t.status==='Active'?'bg-green-100 text-green-700':'bg-red-100 text-red-700'}`}>{t.status}</span>
+                       </td>
+                       <td className="px-4 py-3 flex items-center gap-2">
+                         {t.fuel} 
+                         {t.fuel > t.target && <AlertTriangle className="w-4 h-4 text-amber-500" />}
+                       </td>
+                     </tr>
+                   ))}
+                 </tbody>
+               </table>
+             </CardContent>
+           </Card>
+           <div className="grid grid-cols-3 gap-4">
+              {workersData.map(w => (
+                 <Card key={w.role}>
+                    <CardContent className="pt-6 text-center">
+                       <div className="text-2xl font-bold text-[#004e92]">{w.count}</div>
+                       <div className="text-sm text-slate-500">{w.role}</div>
+                       <div className="text-xs text-slate-400 mt-1">{w.cost}</div>
+                    </CardContent>
+                 </Card>
+              ))}
            </div>
         </TabsContent>
 
-        {/* --- 3. REVENUE (Charts) --- */}
+        {/* --- TAB 3: REVENUE DETAILS --- */}
         <TabsContent value="revenue" className="space-y-6">
            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
-                <CardHeader><CardTitle>Monthly Income Trend (2024)</CardTitle></CardHeader>
-                <CardContent className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={monthlyRevenue}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" fontSize={12} />
-                      <YAxis fontSize={12} tickFormatter={formatGNF} />
-                      <Tooltip formatter={(value) => formatGNF(Number(value))} />
-                      <Line type="monotone" dataKey="value" stroke="#004e92" strokeWidth={3} dot={{r: 4}} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </CardContent>
+                 <CardHeader><CardTitle>Monthly Income (2024)</CardTitle></CardHeader>
+                 <CardContent className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                       <LineChart data={monthlyData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="name" />
+                          <YAxis tickFormatter={(val) => (val/1000000) + 'M'} />
+                          <Tooltip formatter={(val) => formatMoney(Number(val)/1000000)} />
+                          <Line type="monotone" dataKey="income" stroke="#004e92" strokeWidth={3} />
+                       </LineChart>
+                    </ResponsiveContainer>
+                 </CardContent>
               </Card>
-
-              <Card>
-                <CardHeader><CardTitle>Weekly Income (Last Month)</CardTitle></CardHeader>
-                <CardContent className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={weeklyRevenue}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                      <XAxis dataKey="name" fontSize={12} />
-                      <YAxis fontSize={12} tickFormatter={formatGNF} />
-                      <Tooltip formatter={(value) => formatGNF(Number(value))} />
-                      <Bar dataKey="value" fill="#22c55e" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
+              <div className="space-y-6">
+                 <Card>
+                    <CardHeader><CardTitle>Weekly Income (Last 4 Weeks)</CardTitle></CardHeader>
+                    <CardContent className="h-[150px]">
+                       <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={weeklyData}>
+                             <XAxis dataKey="name" />
+                             <Tooltip formatter={(val) => formatMoney(Number(val)/1000000)} />
+                             <Bar dataKey="income" fill="#22c55e" />
+                          </BarChart>
+                       </ResponsiveContainer>
+                    </CardContent>
+                 </Card>
+                 <Card>
+                    <CardHeader><CardTitle>Daily Income (Last 7 Days)</CardTitle></CardHeader>
+                    <CardContent className="h-[150px]">
+                       <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={dailyData}>
+                             <XAxis dataKey="name" />
+                             <Tooltip formatter={(val) => formatMoney(Number(val)/1000000)} />
+                             <Bar dataKey="income" fill="#3b82f6" />
+                          </BarChart>
+                       </ResponsiveContainer>
+                    </CardContent>
+                 </Card>
+              </div>
            </div>
-           
-           <Card>
-              <CardHeader><CardTitle>Daily Income (Last 7 Days)</CardTitle></CardHeader>
-              <CardContent className="h-[250px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={dailyRevenue} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                      <XAxis type="number" hide />
-                      <YAxis dataKey="name" type="category" width={50} />
-                      <Tooltip formatter={(value) => formatGNF(Number(value))} />
-                      <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={20} />
-                    </BarChart>
-                  </ResponsiveContainer>
-              </CardContent>
-           </Card>
         </TabsContent>
+
       </Tabs>
     </div>
   );
