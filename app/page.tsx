@@ -5,7 +5,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Truck, Users, Fuel, AlertTriangle, CheckCircle, ArrowRight } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
-// --- 1. FINANCIAL DATA (Ground Truth) ---
+// --- HELPER FUNCTIONS (The Fix) ---
+const formatMoney = (val: number) => {
+  return new Intl.NumberFormat('en-US', { 
+    style: 'currency', 
+    currency: 'GNF', 
+    notation: 'compact' 
+  }).format(val);
+};
+
+// --- 1. FINANCIAL DATA ---
 const financialKPIs = [
   { title: 'Total Revenue', value: '7.17B GNF', trend: '+100%', color: 'text-green-600', border: 'border-green-500' },
   { title: 'Net Profit', value: '2.50B GNF', trend: '34.8% Margin', color: 'text-blue-600', border: 'border-blue-500' },
@@ -34,25 +43,23 @@ const workersData = [
 
 // --- 3. REVENUE DATA ---
 const monthlyRevenue = [
-  { name: 'Feb', income: 450 }, { name: 'Mar', income: 680 }, { name: 'Apr', income: 720 },
-  { name: 'May', income: 810 }, { name: 'Jun', income: 790 }, { name: 'Jul', income: 850 },
-  { name: 'Aug', income: 620 }, { name: 'Sep', income: 750 }, { name: 'Oct', income: 910 },
-  { name: 'Nov', income: 590 },
+  { name: 'Feb', income: 450000000 }, { name: 'Mar', income: 680000000 }, { name: 'Apr', income: 720000000 },
+  { name: 'May', income: 810000000 }, { name: 'Jun', income: 790000000 }, { name: 'Jul', income: 850000000 },
+  { name: 'Aug', income: 620000000 }, { name: 'Sep', income: 750000000 }, { name: 'Oct', income: 910000000 },
+  { name: 'Nov', income: 590000000 },
 ];
 const weeklyRevenue = [
-  { name: 'Wk 1', income: 185 }, { name: 'Wk 2', income: 192 },
-  { name: 'Wk 3', income: 210 }, { name: 'Wk 4', income: 178 },
+  { name: 'Wk 1', income: 185000000 }, { name: 'Wk 2', income: 192000000 },
+  { name: 'Wk 3', income: 210000000 }, { name: 'Wk 4', income: 178000000 },
 ];
 const dailyRevenue = [
-  { name: 'Mon', income: 28 }, { name: 'Tue', income: 32 }, { name: 'Wed', income: 29 },
-  { name: 'Thu', income: 35 }, { name: 'Fri', income: 31 }, { name: 'Sat', income: 18 },
+  { name: 'Mon', income: 28000000 }, { name: 'Tue', income: 32000000 }, { name: 'Wed', income: 29500000 },
+  { name: 'Thu', income: 35000000 }, { name: 'Fri', income: 31000000 }, { name: 'Sat', income: 18000000 },
   { name: 'Sun', income: 0 },
 ];
 
-const formatGNF = (val: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'GNF', notation: 'compact' }).format(val * 1000000);
-
 export default function ProlinkinDashboard() {
-  // Hydration Fix: Only render charts after mount
+  // CRITICAL FIX: Ensure Client-Side Rendering for Charts
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -63,7 +70,7 @@ export default function ProlinkinDashboard() {
       <div className="mb-8 flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-[#004e92]">PROLINKON GUINEE</h1>
-          <p className="text-slate-600">Operational Command Center v4.0</p>
+          <p className="text-slate-600">Operational Command Center v5.0</p>
         </div>
         <div className="px-4 py-2 bg-white border rounded shadow-sm flex gap-4">
            <div className="flex items-center gap-2"><Truck className="w-4 h-4 text-blue-600"/> <span className="font-bold">9 Trucks</span></div>
@@ -72,7 +79,7 @@ export default function ProlinkinDashboard() {
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="bg-white border p-1 rounded-lg shadow-sm">
+        <TabsList className="bg-white border p-1 rounded-lg shadow-sm flex-wrap h-auto">
           <TabsTrigger value="overview" className="px-6 py-2">📊 CFO Overview</TabsTrigger>
           <TabsTrigger value="operations" className="px-6 py-2">🚚 Ops & Fleet</TabsTrigger>
           <TabsTrigger value="revenue" className="px-6 py-2">📈 Revenue Detail</TabsTrigger>
@@ -115,11 +122,6 @@ export default function ProlinkinDashboard() {
                </table>
              </CardContent>
            </Card>
-           <div className="grid grid-cols-3 gap-4">
-              {workersData.map(w => (
-                 <Card key={w.role}><CardContent className="pt-6 text-center"><div className="text-2xl font-bold text-[#004e92]">{w.count}</div><div className="text-sm text-slate-500">{w.role}</div></CardContent></Card>
-              ))}
-           </div>
         </TabsContent>
 
         <TabsContent value="revenue" className="space-y-6">
@@ -128,18 +130,23 @@ export default function ProlinkinDashboard() {
                  <CardHeader><CardTitle>Monthly Income (2024)</CardTitle></CardHeader>
                  <CardContent className="h-[300px]">
                     <ResponsiveContainer width="100%" height="100%">
-                       <LineChart data={monthlyRevenue}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" /><YAxis /><Tooltip /><Line type="monotone" dataKey="income" stroke="#004e92" strokeWidth={3} /></LineChart>
+                       <LineChart data={monthlyRevenue}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="name" />
+                          <YAxis tickFormatter={(val) => (val/1000000) + 'M'} />
+                          <Tooltip formatter={(val) => formatMoney(Number(val))} />
+                          <Line type="monotone" dataKey="income" stroke="#004e92" strokeWidth={3} />
+                       </LineChart>
                     </ResponsiveContainer>
                  </CardContent>
               </Card>
               <div className="space-y-6">
-                 <Card><CardHeader><CardTitle>Weekly Income</CardTitle></CardHeader><CardContent className="h-[150px]"><ResponsiveContainer width="100%" height="100%"><BarChart data={weeklyRevenue}><XAxis dataKey="name" /><Tooltip /><Bar dataKey="income" fill="#22c55e" /></BarChart></ResponsiveContainer></CardContent></Card>
-                 <Card><CardHeader><CardTitle>Daily Income</CardTitle></CardHeader><CardContent className="h-[150px]"><ResponsiveContainer width="100%" height="100%"><BarChart data={dailyRevenue}><XAxis dataKey="name" /><Tooltip /><Bar dataKey="income" fill="#3b82f6" /></BarChart></ResponsiveContainer></CardContent></Card>
+                 <Card><CardHeader><CardTitle>Weekly Income</CardTitle></CardHeader><CardContent className="h-[150px]"><ResponsiveContainer width="100%" height="100%"><BarChart data={weeklyRevenue}><XAxis dataKey="name" /><Tooltip formatter={(val) => formatMoney(Number(val))} /><Bar dataKey="income" fill="#22c55e" /></BarChart></ResponsiveContainer></CardContent></Card>
+                 <Card><CardHeader><CardTitle>Daily Income</CardTitle></CardHeader><CardContent className="h-[150px]"><ResponsiveContainer width="100%" height="100%"><BarChart data={dailyRevenue}><XAxis dataKey="name" /><Tooltip formatter={(val) => formatMoney(Number(val))} /><Bar dataKey="income" fill="#3b82f6" /></BarChart></ResponsiveContainer></CardContent></Card>
               </div>
            </div>
         </TabsContent>
 
-        {/* --- NEW TAB: BUSINESS PLAN --- */}
         <TabsContent value="plan" className="space-y-6">
             <Card className="bg-white border-l-4 border-purple-500">
                <CardHeader><CardTitle className="text-2xl text-purple-900">Prolinkon Guinea: Strategic Roadmap (2025)</CardTitle></CardHeader>
@@ -188,7 +195,6 @@ export default function ProlinkinDashboard() {
                </CardContent>
             </Card>
         </TabsContent>
-
       </Tabs>
     </div>
   );
